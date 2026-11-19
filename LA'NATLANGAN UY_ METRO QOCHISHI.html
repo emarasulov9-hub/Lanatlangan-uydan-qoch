@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <title>LA'NATLANGAN UY: METRO QOCHISHI</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050307;
+      --panel: rgba(14, 9, 16, 0.86);
+      --border: #6e222b;
+      --text: #dce6f2;
+      --muted: #95a5a6;
+      --red: #ff3b3b;
+      --gold: #feca57;
+      --cyan: #48dbfb;
+      --green: #2ecc71;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Georgia, serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+    canvas#c {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Overlay Screens */
+    .ov {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: rgba(4, 2, 7, 0.95);
+      z-index: 30;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      text-align: center;
+      overflow-y: auto;
+    }
+    .ov.on {
+      display: flex;
+    }
+    #menu {
+      background: radial-gradient(ellipse at 50% 25%, #2b070b, #050204 75%);
+      overflow: hidden;
+    }
+    #menu::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      background:
+        radial-gradient(circle at 28% 58%, rgba(220, 30, 30, 0.17), transparent 45%),
+        radial-gradient(circle at 72% 38%, rgba(72, 219, 251, 0.08), transparent 45%);
+      animation: drift 14s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes drift {
+      to { transform: translate(6%, -4%) scale(1.12); }
+    }
+
+    h1 {
+      font-size: clamp(26px, 7vw, 62px);
+      letter-spacing: 0.14em;
+      margin: 0 0 6px;
+      font-weight: 700;
+      color: #ff4d4d;
+      text-shadow: 0 0 26px rgba(160, 0, 0, 0.85);
+      animation: glitch 5.5s infinite;
+      position: relative;
+      z-index: 2;
+    }
+    h1 small {
+      display: block;
+      font-size: 0.24em;
+      letter-spacing: 0.34em;
+      color: #b2bec3;
+      margin-top: 6px;
+      font-weight: 400;
+    }
+    @keyframes glitch {
+      0%, 91%, 100% { transform: none; }
+      93% { transform: translateX(-4px); text-shadow: 3px 0 #ff0000, -3px 0 #00ffff; }
+      95% { transform: translateX(3px); }
+    }
+
+    button, select {
+      font: inherit;
+      color: #fff;
+      background: rgba(34, 13, 19, 0.86);
+      border: 1px solid var(--border);
+      padding: 11px 22px;
+      min-width: 230px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      position: relative;
+      z-index: 2;
+      border-radius: 7px;
+      transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #841924;
+      border-color: #ff5e5e;
+      transform: scale(1.03);
+    }
+    button:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+    button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .ov label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: min(330px, 92%);
+      font-size: 14px;
+      z-index: 2;
+      text-align: left;
+    }
+    input[type=range] {
+      width: 100%;
+      accent-color: #ff4d4d;
+    }
+    p {
+      max-width: 560px;
+      line-height: 1.55;
+      margin: 4px;
+      white-space: pre-line;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* 3 Boss Preview Cards on Main Menu */
+    .boss-cards {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 6px 0 10px;
+      z-index: 2;
+    }
+    .b-card {
+      width: 110px;
+      background: #0b060c;
+      border: 1px solid #631b25;
+      border-radius: 9px;
+      padding: 6px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+    }
+    .b-card canvas {
+      position: static;
+      width: 96px;
+      height: 118px;
+      border-radius: 6px;
+      background: #040306;
+      margin: 0 auto;
+      display: block;
+    }
+    .b-card b {
+      display: block;
+      font-size: 11px;
+      color: #ff6b6b;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+    .b-card span {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    #hud button {
+      pointer-events: auto;
+      min-width: 0;
+      padding: 8px 13px;
+      letter-spacing: 0;
+    }
+    #vg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 44%, rgba(0, 0, 0, 0.88));
+      transition: box-shadow 0.2s ease;
+    }
+    #vg.hurt {
+      box-shadow: inset 0 0 95px rgba(255, 0, 0, 0.9);
+    }
+    #fd {
+      position: absolute;
+      inset: 0;
+      background: #000;
+      opacity: 1;
+      transition: opacity 1.1s ease;
+    }
+
+    /* Top Left Stats */
+    #stats {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: min(312px, 68%);
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      text-shadow: 0 1px 3px #000;
+    }
+    .bar-box {
+      flex: 1;
+      height: 9px;
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid #4a5568;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #hp-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #c0392b, #ff4d4d);
+      transition: width 0.2s ease;
+    }
+    #bat-bar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #2980b9, #48dbfb);
+      transition: width 0.2s ease;
+    }
+    #boss-box {
+      display: none;
+      margin-top: 4px;
+      background: rgba(20, 4, 8, 0.86);
+      padding: 6px 8px;
+      border: 1px solid #861d28;
+      border-radius: 7px;
+      align-items: center;
+      gap: 8px;
+    }
+    #boss-box.show {
+      display: flex;
+    }
+    #boss-avatar {
+      position: static;
+      width: 44px;
+      height: 54px;
+      border-radius: 5px;
+      border: 1px solid #ff4d4d;
+      background: #040306;
+      flex-shrink: 0;
+    }
+    .boss-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    #boss-name {
+      font-size: 11px;
+      color: #ff6b6b;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    #b-state {
+      color: var(--gold);
+      font-weight: bold;
+    }
+    #boss-bar {
+      height: 8px;
+      width: 100%;
+      background: linear-gradient(90deg, #d63031, #ff7675);
+      transition: width 0.15s ease;
+    }
+    #ob {
+      font-size: 12.5px;
+      color: var(--gold);
+      text-shadow: 0 1px 4px #000;
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    /* Compass Strip */
+    #compass {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 13, 20, 0.82);
+      border: 1px solid #3f4d63;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: bold;
+      color: var(--cyan);
+      letter-spacing: 0.7px;
+      white-space: nowrap;
+      max-width: 52vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Top Right */
+    #tr {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #ammo-hud {
+      background: rgba(15, 16, 22, 0.85);
+      border: 1px solid #4a5568;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    /* Center Crosshair & Prompts */
+    #cr {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      margin: -7px;
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      border-radius: 50%;
+      pointer-events: none;
+      transition: transform 0.1s ease, border-color 0.1s ease;
+    }
+    #cr.gun {
+      border-color: #ff4d4d;
+      width: 18px;
+      height: 18px;
+      margin: -9px;
+    }
+    #cr.hit {
+      transform: scale(1.45);
+      border-color: var(--green);
+    }
+    #cr::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 3px;
+      height: 3px;
+      margin: -1.5px;
+      background: #ff4d4d;
+      border-radius: 50%;
+    }
+
+    #pr, #sy {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      text-align: center;
+      text-shadow: 0 2px 6px #000;
+    }
+    #pr {
+      top: 58%;
+      font-size: 16px;
+      color: #fff;
+      font-weight: bold;
+    }
+    #sy {
+      top: 64.5%;
+      font-size: 14.5px;
+      color: var(--cyan);
+      font-style: italic;
+    }
+
+    #ti {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 28%;
+      text-align: center;
+      font-size: clamp(22px, 5vw, 42px);
+      letter-spacing: 0.18em;
+      color: #ff4d4d;
+      text-shadow: 0 0 22px #000;
+      opacity: 0;
+    }
+    #ti.s {
+      animation: tt 4.4s ease forwards;
+    }
+    @keyframes tt {
+      0% { opacity: 0; transform: scale(0.95); }
+      15%, 76% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; }
+    }
+    #ti small {
+      display: block;
+      font-size: 0.44em;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+
+    /* Weapon Viewmodel */
+    #gun-view {
+      position: absolute;
+      right: 12%;
+      bottom: 0;
+      width: 156px;
+      height: 146px;
+      display: none;
+      pointer-events: none;
+      transform-origin: bottom right;
+      transition: transform 0.08s ease;
+    }
+    #gun-view.recoil {
+      transform: translate(11px, 14px) rotate(-12deg);
+    }
+
+    /* Touch Controls */
+    #joy, #mbs {
+      display: none;
+      position: fixed;
+      z-index: 15;
+    }
+    .touch #joy {
+      display: block;
+      left: max(18px, env(safe-area-inset-left));
+      bottom: max(24px, env(safe-area-inset-bottom));
+      width: 122px;
+      height: 122px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.28);
+    }
+    #joy i {
+      position: absolute;
+      left: 33px;
+      top: 33px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(255, 77, 77, 0.48);
+    }
+    .touch #mbs {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      gap: 8px;
+      right: max(14px, env(safe-area-inset-right));
+      bottom: max(24px, env(safe-area-inset-bottom));
+    }
+    #mbs button {
+      min-width: 0;
+      width: 56px;
+      height: 56px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 10.5px;
+      font-weight: bold;
+      letter-spacing: 0;
+    }
+    #mbs button.on {
+      background: #801b24;
+      border-color: #ff4d4d;
+    }
+    #bShoot {
+      background: rgba(185, 24, 24, 0.88) !important;
+      border-color: #ff6b6b !important;
+    }
+
+    /* Training Mini-Game Modal */
+    #train-box {
+      background: #120b16;
+      border: 2px solid var(--gold);
+      padding: 20px;
+      border-radius: 12px;
+      width: min(390px, 92%);
+      z-index: 2;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.9);
+    }
+    #train-bar-wrap {
+      width: 100%;
+      height: 24px;
+      background: #22252a;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      margin: 16px 0;
+      border: 1px solid #576574;
+    }
+    #train-zone {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: rgba(46, 204, 113, 0.62);
+      border-left: 2px solid var(--green);
+      border-right: 2px solid var(--green);
+    }
+    #train-cursor {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      background: var(--red);
+      box-shadow: 0 0 8px #fff;
+    }
+
+    @media (max-width: 640px) {
+      #compass {
+        top: auto;
+        bottom: max(156px, calc(env(safe-area-inset-bottom) + 148px));
+        font-size: 11px;
+        max-width: 92vw;
+      }
+      #tr {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="hud">
+    <div id="vg"></div>
+    <div id="compass">YOʻNALISH: ...</div>
+    <div id="stats">
+      <div class="bar-row">
+        <span style="color:#ff6b6b;width:46px">JON</span>
+        <div class="bar-box"><div id="hp-bar"></div></div>
+      </div>
+      <div class="bar-row">
+        <span style="color:#48dbfb;width:46px">FONAR</span>
+        <div class="bar-box"><div id="bat-bar"></div></div>
+      </div>
+      <div id="boss-box">
+        <canvas id="boss-avatar" width="128" height="160"></canvas>
+        <div class="boss-meta">
+          <div id="boss-name">
+            <span id="b-title">1-BOSQICH: GRANNY</span>
+            <span id="b-state">TAYYOR</span>
+          </div>
+          <div class="bar-box" style="height:8px"><div id="boss-bar"></div></div>
+        </div>
+      </div>
+      <div id="ob"></div>
+    </div>
+
+    <div id="tr">
+      <div id="ammo-hud">QUROL: YOʻQ</div>
+      <button id="pa" title="Pauza (P / Esc)">II</button>
+    </div>
+
+    <svg id="gun-view" viewBox="0 0 120 120" aria-hidden="true">
+      <rect x="48" y="30" width="24" height="55" rx="4" fill="#2c3e50" stroke="#7f8c8d" stroke-width="2"/>
+      <rect x="52" y="18" width="16" height="22" rx="2" fill="#1a252f"/>
+      <rect x="57" y="14" width="6" height="6" fill="#ff4d4d"/>
+      <path d="M46 75 L74 75 L82 120 L38 120 Z" fill="#1e272e"/>
+    </svg>
+
+    <div id="cr"></div>
+    <div id="pr"></div>
+    <div id="sy"></div>
+    <div id="ti"></div>
+    <div id="fd"></div>
+  </div>
+
+  <!-- Touch Controls -->
+  <div id="joy"><i id="jk"></i></div>
+  <div id="mbs">
+    <button id="bF">FONAR</button>
+    <button id="bC">EGILISH</button>
+    <button id="bR">YUGUR</button>
+    <button id="bU">OLISH</button>
+    <button id="bShoot">OTISH</button>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="menu" class="ov on">
+    <h1>LA'NATLANGAN UY<small>3 BOSQICHLI DAHSHAT VA METRO QOCHISHI</small></h1>
+    <div class="boss-cards">
+      <div class="b-card">
+        <canvas id="prev1" width="128" height="160"></canvas>
+        <b>1. GRANNY</b>
+        <span>Sekin · Charchaydi</span>
+      </div>
+      <div class="b-card">
+        <canvas id="prev2" width="128" height="160"></canvas>
+        <b>2. GRANDFATHER</b>
+        <span>Sekin · Charchamaydi</span>
+      </div>
+      <div class="b-card">
+        <canvas id="prev3" width="128" height="160"></canvas>
+        <b>3. SON (OʻGʻLI)</b>
+        <span>Juda Tezkor · Kalit</span>
+      </div>
+    </div>
+    <button id="bN">YANGI OʻYIN</button>
+    <button id="bS">SOZLAMALAR</button>
+    <button id="bHelp">QOIDALAR</button>
+  </div>
+
+  <!-- Settings -->
+  <div id="set" class="ov">
+    <h1 style="font-size:32px">SOZLAMALAR</h1>
+    <label>
+      <span>Grafika sifati</span>
+      <select id="sq">
+        <option value="0">Past</option>
+        <option value="1">Oʻrta</option>
+        <option value="2">Yuqori</option>
+      </select>
+    </label>
+    <label>
+      <span>Ovoz balandligi</span>
+      <input type="range" id="sv" min="0" max="1" step="0.05">
+    </label>
+    <label>
+      <span>Sichqoncha sezgirligi</span>
+      <input type="range" id="sm" min="0" max="1" step="0.05">
+    </label>
+    <label>
+      <span>Sensor sezgirligi</span>
+      <input type="range" id="st" min="0" max="1" step="0.05">
+    </label>
+    <button class="bk">ORTGA</button>
+  </div>
+
+  <!-- Rules -->
+  <div id="help" class="ov">
+    <h1 style="font-size:30px">OʻYIN QOIDALARI</h1>
+    <p>1-BOSQICH (GRANNY): Sekin yuradi va tez charchaydi. Mashq stendiga borib mashq bajaring, Toʻpponcha va oʻq oling va uni yoʻq qiling!
+
+2-BOSQICH (GRANDFATHER): Sekin, lekin charchamaydi. Mashq qilib Miltiq va oʻq oling va uni yenging!
+
+3-BOSQICH (SON - OʻGʻLI): Juda tezkor! Mashq qilib Ogʻir Qurol va oʻq oling. Uni oʻldirsangiz undan METRO KALITI tushadi.
+
+OXIRGI MAQSAD: Kalitni olib oʻng tarafdagi PADVAL eshigidan tushing va METRO POYEZDI bilan qochib keting!
+
+Boshqaruv: WASD - Yurish | Shift - Yugurish | C - Egilish | F - Fonar | E - Ishlatish | Sichqoncha chap tugmasi yoki Probel (Space) - Oʻq uzish | P yoki Esc - Pauza.</p>
+    <button class="bk">ORTGA</button>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="ov">
+    <h1 style="font-size:32px">PAUZA</h1>
+    <button id="bRs">DAVOM ETISH</button>
+    <button id="bMm">ASOSIY MENYU</button>
+  </div>
+
+  <!-- Training Modal -->
+  <div id="train" class="ov">
+    <div id="train-box">
+      <h2 id="tr-title" style="margin:0;color:#feca57">MASHQ MAYDONI</h2>
+      <p id="tr-desc" style="font-size:14px;color:#dfe6e9">Yashil hududga kelganda ZARBA BERISH tugmasini (yoki Probelni) bosing! (3 marta bajaring)</p>
+      <div id="tr-prog" style="font-weight:bold;color:#48dbfb">Bajarildi: 0 / 3</div>
+      <div id="train-bar-wrap">
+        <div id="train-zone" style="left:40%;width:22%"></div>
+        <div id="train-cursor" style="left:0%"></div>
+      </div>
+      <button id="tr-hit" style="background:#27ae60;border-color:#2ecc71;font-weight:bold">ZARBA BERISH!</button>
+      <button id="tr-close" style="margin-top:8px;background:transparent">BEKOR QILISH</button>
+    </div>
+  </div>
+
+  <!-- End Screen -->
+  <div id="end" class="ov">
+    <h1 id="eh"></h1>
+    <p id="et"></p>
+    <button id="em">ASOSIY MENYU</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    "use strict";
+
+    // Helper utilities
+    const $ = id => document.getElementById(id);
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const cl = (v, a, b) => Math.max(a, Math.min(b, v));
+    const LS = {
+      get(k, d) {
+        try {
+          const v = JSON.parse(localStorage.getItem(k));
+          return v == null ? d : v;
+        } catch (e) {
+          return d;
+        }
+      },
+      set(k, v) {
+        try {
+          localStorage.setItem(k, JSON.stringify(v));
+        } catch (e) {}
+      }
+    };
+
+    const isTouchDevice = matchMedia("(pointer:coarse)").matches || "ontouchstart" in window;
+    if (isTouchDevice) document.body.classList.add("touch");
+
+    let cfg = Object.assign({
+      q: isTouchDevice ? 0 : 1,
+      vol: 0.75,
+      ms: 0.5,
+      ts: 0.5
+    }, LS.get("granny_metro_cfg_v3", {}));
+
+    /* ============ CHARACTER PORTRAITS (WITH INPUT ASSET + FALLBACK) ============ */
+    const ASSET_PATHS = {
+      1: "input_file_0.png",
+      2: "input_file_1.png",
+      3: "input_file_2.png"
+    };
+
+    function drawFallbackPortrait(canvas, stage) {
+      const g = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      g.clearRect(0, 0, w, h);
+
+      const aura = g.createRadialGradient(w / 2, h * 0.44, 8, w / 2, h * 0.44, w * 0.65);
+      aura.addColorStop(0, stage === 3 ? "rgba(180,15,15,0.45)" : stage === 2 ? "rgba(70,90,115,0.4)" : "rgba(110,95,120,0.4)");
+      aura.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = aura;
+      g.fillRect(0, 0, w, h);
+
+      if (stage === 1) {
+        g.fillStyle = "#7f8c8d";
+        g.beginPath(); g.arc(w / 2, 24, 18, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(w / 2, 48, 30, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#2c222b";
+        g.beginPath(); g.moveTo(w / 2 - 34, 76); g.lineTo(w / 2 + 34, 76); g.lineTo(w / 2 + 44, 158); g.lineTo(w / 2 - 44, 158); g.closePath(); g.fill();
+        g.fillStyle = "#cfd6d8";
+        g.beginPath(); g.ellipse(w / 2, 52, 21, 25, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#2c3e50";
+        g.beginPath(); g.arc(w / 2 - 8, 48, 6, 0, Math.PI * 2); g.arc(w / 2 + 8, 48, 6, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#e0f7fa";
+        g.beginPath(); g.arc(w / 2 - 8, 48, 2.6, 0, Math.PI * 2); g.arc(w / 2 + 8, 48, 2.6, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = "#1a1a1a"; g.lineWidth = 2.5;
+        g.beginPath(); g.moveTo(w / 2 - 9, 66); g.quadraticCurveTo(w / 2, 61, w / 2 + 9, 67); g.stroke();
+      } else if (stage === 2) {
+        g.fillStyle = "#1e272e";
+        g.beginPath(); g.moveTo(w / 2 - 40, 74); g.lineTo(w / 2 + 40, 74); g.lineTo(w / 2 + 48, 158); g.lineTo(w / 2 - 48, 158); g.closePath(); g.fill();
+        g.fillStyle = "#b8c0c2";
+        g.beginPath(); if (g.roundRect) g.roundRect(w / 2 - 20, 26, 40, 48, 12); else g.rect(w / 2 - 20, 26, 40, 48); g.fill();
+        g.fillStyle = "#1e272e";
+        g.fillRect(w / 2 - 15, 41, 12, 6); g.fillRect(w / 2 + 3, 41, 12, 6);
+        g.fillStyle = "#ffeaa7";
+        g.beginPath(); g.arc(w / 2 - 9, 45, 2.6, 0, Math.PI * 2); g.arc(w / 2 + 9, 45, 2.6, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#7f8c8d";
+        g.beginPath(); g.moveTo(w / 2 - 16, 60); g.quadraticCurveTo(w / 2, 52, w / 2 + 16, 60); g.lineTo(w / 2 + 13, 65); g.quadraticCurveTo(w / 2, 59, w / 2 - 13, 65); g.fill();
+      } else {
+        g.fillStyle = "#16161d";
+        g.beginPath(); g.arc(w / 2, 46, 31, Math.PI, 0); g.lineTo(w / 2 + 42, 158); g.lineTo(w / 2 - 42, 158); g.closePath(); g.fill();
+        g.fillStyle = "#222026";
+        g.beginPath(); g.ellipse(w / 2, 50, 19, 23, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#ff2a2a";
+        g.beginPath(); g.ellipse(w / 2 - 8, 47, 4, 2.2, -0.2, 0, Math.PI * 2); g.ellipse(w / 2 + 8, 47, 4, 2.2, 0.2, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = "#dfe6e9"; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(w / 2 - 11, 61); g.quadraticCurveTo(w / 2, 70, w / 2 + 11, 61); g.stroke();
+      }
+    }
+
+    const portraitCanvasesByStage = { 1: [], 2: [], 3: [] };
+    const charImages = {};
+    const charTextures = {};
+
+    function refreshPortraitsForStage(stage) {
+      const img = charImages[stage];
+      const list = portraitCanvasesByStage[stage] || [];
+      for (const canvas of list) {
+        if (!canvas) continue;
+        const g = canvas.getContext("2d");
+        g.fillStyle = "#040306";
+        g.fillRect(0, 0, canvas.width, canvas.height);
+        if (img && img.complete && img.naturalWidth > 0) {
+          g.drawImage(img, 0, 0, canvas.width, canvas.height);
+        } else {
+          drawFallbackPortrait(canvas, stage);
+        }
+      }
+      if (charTextures[stage]) {
+        charTextures[stage].needsUpdate = true;
+      }
+    }
+
+    function registerPortraitCanvas(canvas, stage) {
+      if (!canvas) return;
+      portraitCanvasesByStage[stage].push(canvas);
+      refreshPortraitsForStage(stage);
+    }
+
+    [1, 2, 3].forEach(st => {
+      const fbCanvas = document.createElement("canvas");
+      fbCanvas.width = 256;
+      fbCanvas.height = 320;
+      drawFallbackPortrait(fbCanvas, st);
+      const tex = new THREE.CanvasTexture(fbCanvas);
+      charTextures[st] = tex;
+
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth > 0) {
+          tex.image = img;
+          tex.needsUpdate = true;
+          refreshPortraitsForStage(st);
+        }
+      };
+      img.onerror = () => {
+        refreshPortraitsForStage(st);
+      };
+      img.src = ASSET_PATHS[st];
+      charImages[st] = img;
+    });
+
+    /* ============ GAME STATE ============ */
+    let S, playing = false, paused = false, ui = "", busy = 0, cur = null, FLon = true;
+
+    function fresh() {
+      return {
+        hp: 100,
+        bat: 100,
+        stage: 1,
+        weapon: 0,
+        ammo: 0,
+        hasMetroKey: false,
+        trainDone: { 1: false, 2: false, 3: false },
+        open: {},
+        t: 0
+      };
+    }
+
+    /* ============ RENDERER & THREE.JS SCENE ============ */
+    const renderer = new THREE.WebGLRenderer({
+      canvas: $("c"),
+      antialias: false,
+      powerPreference: "high-performance"
+    });
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050408);
+    scene.fog = new THREE.FogExp2(0x07050a, 0.055);
+
+    const cam = new THREE.PerspectiveCamera(72, 1, 0.05, 65);
+    cam.rotation.order = "YXZ";
+    scene.add(cam);
+
+    const ambientLight = new THREE.AmbientLight(0x2e2638, 1.05);
+    scene.add(ambientLight);
+
+    const FL = new THREE.SpotLight(0xfff4e0, 2.9, 28, 0.52, 0.45, 1.25);
+    FL.target.position.set(0, 0, -1);
+    cam.add(FL, FL.target);
+
+    function resize() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      cam.aspect = innerWidth / Math.max(1, innerHeight);
+      cam.updateProjectionMatrix();
+    }
+
+    function quality() {
+      const q = +cfg.q;
+      renderer.setPixelRatio([0.65, 0.95, Math.min(devicePixelRatio || 1, 1.5)][q]);
+      scene.fog.density = [0.068, 0.055, 0.044][q];
+      resize();
+    }
+
+    addEventListener("resize", resize);
+    $("sq").value = cfg.q;
+    $("sv").value = cfg.vol;
+    $("sm").value = cfg.ms;
+    $("st").value = cfg.ts;
+
+    ["sq", "sv", "sm", "st"].forEach(id => {
+      $(id).oninput = () => {
+        cfg = {
+          q: +$("sq").value,
+          vol: +$("sv").value,
+          ms: +$("sm").value,
+          ts: +$("st").value
+        };
+        LS.set("granny_metro_cfg_v3", cfg);
+        if (MG) MG.gain.value = cfg.vol;
+        quality();
+      };
+    });
+
+    /* ============ PROCEDURAL MATERIALS & ARCHITECTURE ============ */
+    function ctex(w, h, fn) {
+      const cv = document.createElement("canvas");
+      cv.width = w;
+      cv.height = h;
+      fn(cv.getContext("2d"), w, h);
+      const tx = new THREE.CanvasTexture(cv);
+      tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+      return tx;
+    }
+
+    const grain = (g, w, h, n, a) => {
+      for (let i = 0; i < n; i++) {
+        g.fillStyle = `rgba(0,0,0,${Math.random() * a})`;
+        g.fillRect(Math.random() * w, Math.random() * h, rnd(1, 4), rnd(1, 4));
+      }
+    };
+
+    const mk = (tx, c, e) => new THREE.MeshPhongMaterial({
+      map: tx || null,
+      color: c || 0xffffff,
+      shininess: 8,
+      emissive: e || 0
+    });
+
+    const wallM = mk(ctex(128, 128, (g, w, h) => {
+      g.fillStyle = "#3d352e";
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = "#2b241e";
+      for (let x = 0; x < w; x += 16) g.fillRect(x, 0, 2, h);
+      grain(g, w, h, 600, 0.35);
+    }));
+
+    const floorM = mk(ctex(128, 128, (g, w, h) => {
+      g.fillStyle = "#261f1a";
+      g.fillRect(0, 0, w, h);
+      g.strokeStyle = "#14100d";
+      g.lineWidth = 3;
+      for (let y = 0; y < h; y += 16) {
+        g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+      }
+      grain(g, w, h, 500, 0.3);
+    }));
+
+    const metroWallM = mk(ctex(128, 128, (g, w, h) => {
+      g.fillStyle = "#243442";
+      g.fillRect(0, 0, w, h);
+      g.strokeStyle = "#16222c";
+      g.lineWidth = 2;
+      g.strokeRect(0, 0, 64, 32);
+      g.strokeRect(64, 32, 64, 32);
+      grain(g, w, h, 400, 0.25);
+    }));
+
+    const metroFloorM = mk(ctex(128, 128, (g, w, h) => {
+      g.fillStyle = "#1e2226";
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = "#feca57";
+      g.fillRect(0, h - 14, w, 14);
+      grain(g, w, h, 400, 0.3);
+    }));
+
+    const ceilM = mk(null, 0x1a1614);
+    const woodM = mk(null, 0x4a321f);
+    const metalM = mk(null, 0x576574);
+    const doorM = mk(null, 0x6b4423);
+
+    const W = [];
+    const IA = [];
+    const DR = {};
+    const LT = [];
+    const trainStations = [];
+
+    function bx(x, y, z, w, h, d, m, col = true, fl = 1) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      scene.add(mesh);
+      if (col) {
+        W.push({
+          x0: x - w / 2,
+          x1: x + w / 2,
+          z0: z - d / 2,
+          z1: z + d / 2,
+          fl,
+          on: true
+        });
+      }
+      return mesh;
+    }
+
+    function lamp(x, y, z, col = 0xffd28a, intensity = 1.25) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.3, 0.08, 0.3),
+        new THREE.MeshBasicMaterial({ color: col })
+      );
+      m.position.set(x, y, z);
+      scene.add(m);
+      const p = new THREE.PointLight(col, intensity, 14, 1.7);
+      p.position.set(x, y - 0.3, z);
+      scene.add(p);
+      LT.push({ p, m, col, baseInt: intensity });
+    }
+
+    function door(id, x, y, z, ax, ang, lockFn) {
+      const pivot = new THREE.Group();
+      const w = 1.5;
+      const zz = ax === "z";
+      const leaf = new THREE.Mesh(
+        zz ? new THREE.BoxGeometry(0.1, 2.3, w) : new THREE.BoxGeometry(w, 2.3, 0.1),
+        doorM
+      );
+      leaf.position.set(zz ? 0 : w / 2, 1.15, zz ? w / 2 : 0);
+      pivot.add(leaf);
+      pivot.position.set(zz ? x : x - w / 2, y, zz ? z - w / 2 : z);
+      scene.add(pivot);
+
+      const fl = y < -1 ? 0 : 1;
+      const col = {
+        x0: zz ? x - 0.15 : x - w / 2,
+        x1: zz ? x + 0.15 : x + w / 2,
+        z0: zz ? z - w / 2 : z - 0.15,
+        z1: zz ? z + w / 2 : z + 0.15,
+        fl,
+        on: true
+      };
+      W.push(col);
+
+      const d = DR[id] = { id, p: pivot, ang, lockFn, col, a: 0, x, z };
+      leaf.userData.a = {
+        l: () => (lockFn && lockFn() ? "🔒 QULFLANGAN (KALIT KERAK)" : "E · ESHIKNI OCHISH/YOPISH"),
+        fn: () => useDoor(d)
+      };
+      IA.push(leaf);
+    }
+
+    function makeSign(x, y, z, ry, txt, bg = "#2c0a0a", fg = "#feca57") {
+      const cv = document.createElement("canvas");
+      cv.width = 512;
+      cv.height = 128;
+      const g = cv.getContext("2d");
+      g.fillStyle = bg;
+      g.fillRect(0, 0, 512, 128);
+      g.strokeStyle = fg;
+      g.lineWidth = 6;
+      g.strokeRect(6, 6, 500, 116);
+      g.fillStyle = fg;
+      g.font = "bold 30px sans-serif";
+      g.textAlign = "center";
+      g.fillText(txt, 256, 75);
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.6, 0.65),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv) })
+      );
+      mesh.position.set(x, y, z);
+      mesh.rotation.y = ry;
+      scene.add(mesh);
+    }
+
+    let keyMesh, trainMesh;
+
+    function buildWorld() {
+      // Floor 1: Haunted House
+      bx(0, -0.1, -1, 22, 0.2, 20, floorM, false);
+      bx(0, 3.5, -1, 22, 0.2, 20, ceilM, false);
+      bx(0, 1.7, -11, 22, 3.4, 0.3, wallM, true, 1);
+      bx(0, 1.7, 9, 22, 3.4, 0.3, wallM, true, 1);
+      bx(-11, 1.7, -1, 0.3, 3.4, 20, wallM, true, 1);
+      bx(11, 1.7, -1, 0.3, 3.4, 20, wallM, true, 1);
+
+      // Left Wing
+      bx(-3, 1.7, -6.5, 0.25, 3.4, 9, wallM, true, 1);
+      bx(-3, 1.7, 4.25, 0.25, 3.4, 9.5, wallM, true, 1);
+      door("d1", -3, 0, -1.25, "z", -Math.PI / 2, null);
+
+      // Right Wing & Stairwell
+      bx(3, 1.7, -6.5, 0.25, 3.4, 9, wallM, true, 1);
+      bx(7, 1.7, -2, 8, 3.4, 0.25, wallM, true, 1);
+      door("d2", 3, 0, -1.25, "z", Math.PI / 2, null);
+
+      bx(7, 1.7, 2.2, 0.25, 3.4, 8.4, wallM, true, 1);
+      door("dBase", 7, 0, 7.5, "z", Math.PI / 2, () => !S.hasMetroKey);
+      makeSign(6.8, 2.5, 7.5, -Math.PI / 2, "PADVAL: METRO STANSIYASI", "#1e272e", "#feca57");
+
+      // Stairwell ramp visual hint
+      const ramp = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.2, 8.2),
+        new THREE.MeshPhongMaterial({ color: 0x3b2d23, shininess: 10 })
+      );
+      ramp.position.set(9.0, -2.15, 2.5);
+      ramp.rotation.x = Math.atan2(-4.2, 8.0);
+      scene.add(ramp);
+
+      // Furniture
+      bx(-7, 0.45, -8, 2.2, 0.9, 1.2, woodM, true, 1);
+      bx(7, 0.45, -8, 2.2, 0.9, 1.2, woodM, true, 1);
+      bx(0, 0.45, -9.5, 3, 0.9, 1.2, woodM, true, 1);
+
+      // Lamps Floor 1
+      lamp(0, 3.35, -7);
+      lamp(0, 3.35, 2);
+      lamp(-7, 3.35, -4);
+      lamp(7, 3.35, -6);
+      lamp(9, 3.35, 4);
+
+      // Interactive Training Pads for Stages 1, 2, 3
+      const addTrainPad = (stageId, x, z, label, color) => {
+        const base = bx(x, 0.5, z, 1.2, 1, 1.2, metalM, true, 1);
+        const orb = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.34),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        orb.position.set(x, 1.45, z);
+        scene.add(orb);
+        trainStations.push({ stageId, x, z, orb });
+
+        makeSign(
+          x, 2.3, z - 0.6, 0, label, "#111",
+          color === 0x2ecc71 ? "#2ecc71" : color === 0x48dbfb ? "#48dbfb" : "#ff6b6b"
+        );
+
+        const act = () => {
+          if (S.stage !== stageId) {
+            if (S.stage > stageId) say("Bu bosqich mashqi allaqachon bajarilgan!");
+            else say(`Avval ${S.stage}-bosqich dushmanini yoʻq qiling!`);
+            return;
+          }
+          if (S.trainDone[stageId]) {
+            S.ammo += 8;
+            updateHUD();
+            snd.pick();
+            say("Qoʻshimcha +8 ta oʻq olindi!");
+            return;
+          }
+          openTraining(stageId);
+        };
+
+        base.userData.a = { l: () => `E · MASHQ QILISH (${stageId}-BOSQICH)`, fn: act };
+        orb.userData.a = { l: () => `E · MASHQ QILISH (${stageId}-BOSQICH)`, fn: act };
+        IA.push(base, orb);
+      };
+
+      addTrainPad(1, -8.5, -3, "1-MASHQ: TOʻPPONCHA", 0x2ecc71);
+      addTrainPad(2, 8.5, -5, "2-MASHQ: MILTIQ", 0x48dbfb);
+      addTrainPad(3, 0, -8.5, "3-MASHQ: OGʻIR QUROL", 0xff6b6b);
+
+      // Basement: Metro Station
+      bx(0, -4.3, 2, 24, 0.2, 22, metroFloorM, false);
+      bx(0, -0.8, 2, 24, 0.2, 22, ceilM, false);
+      bx(0, -2.5, -9, 24, 3.6, 0.3, metroWallM, true, 0);
+      bx(0, -2.5, 13, 24, 3.6, 0.3, metroWallM, true, 0);
+      bx(-12, -2.5, 2, 0.3, 3.6, 22, metroWallM, true, 0);
+      bx(12, -2.5, 2, 0.3, 3.6, 22, metroWallM, true, 0);
+
+      lamp(0, -1.0, 0, 0x48dbfb, 1.35);
+      lamp(-6, -1.0, 6, 0x48dbfb, 1.25);
+      lamp(6, -1.0, 6, 0x48dbfb, 1.25);
+
+      // Metro Train
+      trainMesh = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(11, 2.6, 3.2),
+        new THREE.MeshPhongMaterial({ color: 0x2980b9, shininess: 40 })
+      );
+      body.position.set(-3, -2.8, 9.5);
+      const front = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 2.4, 3.0),
+        new THREE.MeshBasicMaterial({ color: 0xfeca57 })
+      );
+      front.position.set(2.6, -2.8, 9.5);
+      trainMesh.add(body, front);
+      scene.add(trainMesh);
+      makeSign(-3, -1.2, 7.8, 0, "METRO POYEZDI — QOCHISH", "#0a2239", "#48dbfb");
+
+      const escapeAct = () => {
+        if (!S.hasMetroKey) {
+          snd.buzz();
+          return say("Metro poyezdini ishga tushirish uchun METRO KALITI kerak!");
+        }
+        winGame();
+      };
+      body.userData.a = { l: () => "E · METRO BILAN QOCHISH!", fn: escapeAct };
+      front.userData.a = { l: () => "E · METRO BILAN QOCHISH!", fn: escapeAct };
+      IA.push(body, front);
+
+      // Golden Metro Key dropped by Son (Stage 3)
+      keyMesh = new THREE.Mesh(
+        new THREE.TorusGeometry(0.22, 0.065, 10, 20),
+        new THREE.MeshBasicMaterial({ color: 0xfeca57 })
+      );
+      keyMesh.visible = false;
+      keyMesh.userData.a = {
+        l: () => "E · METRO KALITINI OLISH",
+        fn: () => {
+          if (!keyMesh.visible) return;
+          keyMesh.visible = false;
+          S.hasMetroKey = true;
+          S.stage = 4;
+          snd.pick();
+          banner("METRO KALITI OLINDI!", "Oʻng tomondagi PADVAL eshigidan tushib METRO bilan qoching!");
+          updateHUD();
+        }
+      };
+      scene.add(keyMesh);
+      IA.push(keyMesh);
+    }
+
+    /* ============ 3-STAGE BOSS ENEMY SYSTEM ============ */
+    const bossSpriteMat = new THREE.SpriteMaterial({
+      map: charTextures[1],
+      transparent: true
+    });
+    const bossSprite = new THREE.Sprite(bossSpriteMat);
+    bossSprite.scale.set(1.65, 2.25, 1);
+    bossSprite.position.y = 1.15;
+
+    const EN = new THREE.Group();
+    EN.add(bossSprite);
+    scene.add(EN);
+
+    const Boss = {
+      active: false,
+      name: "",
+      hp: 100,
+      maxHp: 100,
+      speed: 2.0,
+      stamina: 100,
+      maxStamina: 100,
+      canTire: true,
+      tired: false,
+      atkCd: 0,
+      hitFlash: 0
+    };
+
+    function spawnStageBoss(st) {
+      S.stage = st;
+      EN.visible = true;
+      Boss.active = true;
+      Boss.tired = false;
+      Boss.atkCd = 1.0;
+      EN.position.set(P.x > 0 ? -7 : 7, 0, P.z > 0 ? -7 : 5);
+
+      bossSpriteMat.map = charTextures[st];
+      bossSpriteMat.needsUpdate = true;
+      refreshPortraitsForStage(st);
+
+      if (st === 1) {
+        Boss.name = "1-BOSQICH: GRANNY";
+        Boss.hp = Boss.maxHp = 90;
+        Boss.speed = 2.1;
+        Boss.canTire = true;
+        Boss.stamina = Boss.maxStamina = 100;
+        bossSprite.scale.set(1.6, 2.15, 1);
+        banner("1-BOSQICH: GRANNY", "U sekin va tez charchaydi. Mashq qilib qurol oling va uni yoʻq qiling!");
+      } else if (st === 2) {
+        Boss.name = "2-BOSQICH: GRANDFATHER";
+        Boss.hp = Boss.maxHp = 160;
+        Boss.speed = 2.35;
+        Boss.canTire = false;
+        Boss.stamina = Boss.maxStamina = 100;
+        bossSprite.scale.set(1.8, 2.45, 1);
+        banner("2-BOSQICH: GRANDFATHER", "U sekin, LEKIN CHARCHAMAYDI! Mashq qilib Miltiq oling va uni yenging!");
+      } else if (st === 3) {
+        Boss.name = "3-BOSQICH: SON (OʻGʻLI)";
+        Boss.hp = Boss.maxHp = 220;
+        Boss.speed = 4.35;
+        Boss.canTire = false;
+        Boss.stamina = Boss.maxStamina = 100;
+        bossSprite.scale.set(1.7, 2.3, 1);
+        banner("3-BOSQICH: SON (TEZKOR)", "Ehtiyot boʻling, u juda tez yuguradi! Ogʻir qurol olib uni oʻldiring!");
+      }
+      updateHUD();
+    }
+
+    function damageBoss(dmg) {
+      if (!Boss.active) return;
+      Boss.hp = Math.max(0, Boss.hp - dmg);
+      Boss.hitFlash = 0.16;
+      snd.hit();
+      $("cr").classList.add("hit");
+      setTimeout(() => $("cr").classList.remove("hit"), 140);
+      updateHUD();
+
+      if (Boss.hp <= 0) {
+        Boss.active = false;
+        EN.visible = false;
+        snd.boom();
+        if (S.stage === 1) {
+          say("GRANNY YOʻQ QILINDI! 2-bosqich boshlanmoqda...");
+          setTimeout(() => {
+            if (playing) spawnStageBoss(2);
+          }, 2600);
+        } else if (S.stage === 2) {
+          say("GRANDFATHER YENGILDI! Oxirgi 3-bosqichga tayyorlaning...");
+          setTimeout(() => {
+            if (playing) spawnStageBoss(3);
+          }, 2600);
+        } else if (S.stage === 3) {
+          keyMesh.position.set(EN.position.x, 0.9, EN.position.z);
+          keyMesh.visible = true;
+          banner("SON OʻLDIRILDI!", "Yerdagi oltin METRO KALITINI oling va padvaldagi metroga qoching!");
+          updateHUD();
+        }
+      }
+    }
+
+    /* ============ SHOOTING & WEAPONS ============ */
+    let shootCd = 0;
+
+    function shoot() {
+      if (!playing || ui || paused || busy || shootCd > 0) return;
+      if (S.weapon === 0) return say("Sizda qurol yoʻq! Avval mashq stendida mashq qiling.");
+      if (S.ammo <= 0) return say("Oʻq tugadi! Mashq stendidan yana oʻq oling.");
+
+      S.ammo--;
+      shootCd = [0.32, 0.34, 0.28, 0.18][S.weapon] || 0.3;
+      updateHUD();
+      snd.shoot(S.weapon);
+
+      const gv = $("gun-view");
+      gv.classList.add("recoil");
+      setTimeout(() => gv.classList.remove("recoil"), 90);
+
+      if (Boss.active && P.y > -1.5) {
+        const dx = EN.position.x - P.x;
+        const dz = EN.position.z - P.z;
+        const dist = Math.hypot(dx, dz);
+        const fx = -Math.sin(yaw);
+        const fz = -Math.cos(yaw);
+        const dot = (dx * fx + dz * fz) / (dist || 1);
+        if (dot > 0.9 && dist < 19) {
+          const dmg = [0, 35, 60, 85][S.weapon];
+          damageBoss(dmg);
+        }
+      }
+    }
+
+    /* ============ TRAINING MINI-GAME ============ */
+    let trPos = 0, trDir = 1, trHits = 0, trStage = 1;
+
+    function openTraining(st) {
+      trStage = st;
+      trHits = 0;
+      trPos = 10;
+      trDir = 1;
+      const names = {
+        1: "1-MASHQ: TOʻPPONCHA VA OʻQ",
+        2: "2-MASHQ: MILTIQ VA OʻQ",
+        3: "3-MASHQ: OGʻIR QUROL VA OʻQ"
+      };
+      $("tr-title").textContent = names[st];
+      $("tr-prog").textContent = "Bajarildi: 0 / 3";
+      $("train-zone").style.width = (26 - st * 4) + "%";
+      $("train-zone").style.left = rnd(22, 56) + "%";
+      openUI("train");
+    }
+
+    function submitTrainingHit() {
+      const zL = parseFloat($("train-zone").style.left);
+      const zW = parseFloat($("train-zone").style.width);
+      if (trPos >= zL && trPos <= zL + zW) {
+        trHits++;
+        snd.pick();
+        $("tr-prog").textContent = `Bajarildi: ${trHits} / 3`;
+        $("train-zone").style.left = rnd(14, 64) + "%";
+        if (trHits >= 3) {
+          S.trainDone[trStage] = true;
+          S.weapon = trStage;
+          S.ammo += 12;
+          closeUI();
+          updateHUD();
+          const wNames = ["", "TOʻPPONCHA", "MILTIQ", "OGʻIR QUROL"];
+          banner(`${wNames[trStage]} OLINDI!`, "Endi dushmanga qarab oʻq uzing (Sichqoncha, Probel yoki OTISH)!");
+        }
+      } else {
+        snd.buzz();
+        trHits = Math.max(0, trHits - 1);
+        $("tr-prog").textContent = `Xato! Bajarildi: ${trHits} / 3`;
+      }
+    }
+
+    $("tr-hit").onclick = submitTrainingHit;
+    $("tr-close").onclick = closeUI;
+
+    /* ============ WEB AUDIO SYNTHESIZER ============ */
+    let AC, MG;
+    const snd = (() => {
+      const osc = (ty, f0, f1, d, v) => {
+        if (!AC) return;
+        try {
+          const o = AC.createOscillator();
+          const g = AC.createGain();
+          const n = AC.currentTime;
+          o.type = ty;
+          o.frequency.setValueAtTime(f0, n);
+          o.frequency.exponentialRampToValueAtTime(Math.max(18, f1), n + d);
+          g.gain.setValueAtTime(v, n);
+          g.gain.exponentialRampToValueAtTime(0.001, n + d);
+          o.connect(g);
+          g.connect(MG);
+          o.start();
+          o.stop(n + d + 0.05);
+        } catch (e) {}
+      };
+      return {
+        init() {
+          if (AC) return;
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtx) return;
+          AC = new AudioCtx();
+          MG = AC.createGain();
+          MG.gain.value = cfg.vol;
+          MG.connect(AC.destination);
+        },
+        shoot(w) {
+          osc("sawtooth", 220 + w * 60, 45, 0.18, 0.45);
+          osc("square", 140, 30, 0.22, 0.35);
+        },
+        hit() {
+          osc("triangle", 520, 180, 0.12, 0.35);
+        },
+        boom() {
+          osc("sawtooth", 110, 24, 0.7, 0.6);
+        },
+        pick() {
+          osc("sine", 600, 1100, 0.18, 0.25);
+        },
+        buzz() {
+          osc("square", 130, 95, 0.25, 0.2);
+        },
+        hurt() {
+          osc("sawtooth", 150, 55, 0.35, 0.5);
+        },
+        step() {
+          osc("sine", 90, 42, 0.08, 0.12);
+        }
+      };
+    })();
+
+    /* ============ PLAYER MOVEMENT & INTERACTIONS ============ */
+    const P = { x: -6, y: 0, z: 5 };
+    const K = {};
+    const joy = { x: 0, y: 0 };
+    let yaw = 0, pitch = 0, runT = false, crT = false, jt = null, lt = null, lx = 0, ly = 0, stepT = 0;
+
+    function hitWall(x, z, fl) {
+      const r = 0.32;
+      for (const w of W) {
+        if (w.on && w.fl === fl && x > w.x0 - r && x < w.x1 + r && z > w.z0 - r && z < w.z1 + r) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function useDoor(d) {
+      if (d.lockFn && d.lockFn()) {
+        snd.buzz();
+        return say("Qulflangan! Avval 3-bosqichdagi Son ni oʻldirib kalitni oling.");
+      }
+      S.open[d.id] = !S.open[d.id];
+      snd.pick();
+    }
+
+    let sayT;
+    function say(txt) {
+      $("sy").textContent = txt;
+      clearTimeout(sayT);
+      sayT = setTimeout(() => { $("sy").textContent = ""; }, 3200);
+    }
+
+    function banner(h, sub) {
+      const e = $("ti");
+      e.innerHTML = `${h}<small>${sub}</small>`;
+      e.classList.remove("s");
+      void e.offsetWidth;
+      e.classList.add("s");
+    }
+
+    function updateCompass() {
+      let tx = 0, tz = 0, label = "MAQSAD";
+      if (S.hasMetroKey) {
+        if (P.y > -1.5) {
+          tx = 7.5; tz = 7.5; label = "PADVAL ESHIGI";
+        } else {
+          tx = -3; tz = 9.5; label = "METRO POYEZDI";
+        }
+      } else if (S.stage === 3 && keyMesh.visible) {
+        tx = keyMesh.position.x;
+        tz = keyMesh.position.z;
+        label = "OLTIN KALIT";
+      } else if (!S.trainDone[S.stage]) {
+        const st = trainStations.find(s => s.stageId === S.stage);
+        if (st) {
+          tx = st.x; tz = st.z; label = `${S.stage}-MASHQ STENDI`;
+        }
+      } else if (Boss.active) {
+        tx = EN.position.x;
+        tz = EN.position.z;
+        label = Boss.name;
+      }
+      const dist = Math.hypot(tx - P.x, tz - P.z).toFixed(1);
+      $("compass").textContent = `${label}: ${dist}m`;
+    }
+
+    function updateHUD() {
+      $("hp-bar").style.width = S.hp + "%";
+      $("bat-bar").style.width = S.bat + "%";
+      const wNames = ["YOʻQ", "TOʻPPONCHA", "MILTIQ", "OGʻIR QUROL"];
+      $("ammo-hud").textContent = S.weapon ? `${wNames[S.weapon]} | OʻQ: ${S.ammo}` : "QUROL: YOʻQ";
+      $("gun-view").style.display = S.weapon > 0 ? "block" : "none";
+      $("cr").classList.toggle("gun", S.weapon > 0);
+
+      if (Boss.active) {
+        $("boss-box").classList.add("show");
+        $("b-title").textContent = Boss.name;
+        $("b-state").textContent = Boss.tired ? "CHARCHADI" : "HUJUMDA";
+        $("boss-bar").style.width = (Boss.hp / Boss.maxHp * 100) + "%";
+      } else {
+        $("boss-box").classList.remove("show");
+      }
+
+      if (S.hasMetroKey) {
+        $("ob").textContent = "MAQSAD: Oʻng tarafdagi PADVAL eshigidan tushib METRO bilan qoching!";
+      } else if (S.stage === 3 && keyMesh.visible) {
+        $("ob").textContent = "MAQSAD: Yerdagi oltin METRO KALITINI oling!";
+      } else if (!S.trainDone[S.stage]) {
+        $("ob").textContent = `MAQSAD: ${S.stage}-mashq stendiga borib mashq bajaring va qurol oling!`;
+      } else {
+        $("ob").textContent = `MAQSAD: ${Boss.name} ni qurol bilan otib yoʻq qiling!`;
+      }
+    }
+
+    function setPausedState(nextPaused) {
+      paused = nextPaused;
+      $("pause").classList.toggle("on", paused);
+      if (paused && document.pointerLockElement) {
+        try { document.exitPointerLock(); } catch (e) {}
+      } else if (!paused) {
+        lock();
+      }
+    }
+
+    function openUI(id) {
+      ui = id;
+      $(id).classList.add("on");
+      if (document.pointerLockElement) {
+        try { document.exitPointerLock(); } catch (e) {}
+      }
+    }
+
+    function closeUI() {
+      if (ui) $(ui).classList.remove("on");
+      ui = "";
+      lock();
+    }
+
+    function lock() {
+      if (!isTouchDevice && playing && !paused && !ui) {
+        try {
+          if ($("c").requestPointerLock) $("c").requestPointerLock();
+        } catch (e) {}
+      }
+    }
+
+    /* ============ KEYBOARD, MOUSE & TOUCH BINDINGS ============ */
+    addEventListener("keydown", e => {
+      K[e.code] = 1;
+      if (!playing) return;
+
+      if (ui === "train") {
+        if (e.code === "Space" || e.code === "Enter") {
+          e.preventDefault();
+          submitTrainingHit();
+        } else if (e.code === "Escape") {
+          e.preventDefault();
+          closeUI();
+        }
+        return;
+      }
+
+      if (e.code === "KeyP" || e.code === "Escape") {
+        if (ui) {
+          closeUI();
+        } else {
+          setPausedState(!paused);
+        }
+        return;
+      }
+
+      if (paused || ui || busy) return;
+      if (e.code === "KeyE" && cur) cur.fn();
+      if (e.code === "KeyF") {
+        FLon = !FLon;
+        snd.pick();
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        shoot();
+      }
+    });
+
+    addEventListener("keyup", e => {
+      K[e.code] = 0;
+    });
+
+    document.addEventListener("mousemove", e => {
+      if (!playing || paused || ui || busy) return;
+      if (document.pointerLockElement === $("c")) {
+        yaw -= e.movementX * (0.0007 + cfg.ms * 0.004);
+        pitch = cl(pitch - e.movementY * (0.0007 + cfg.ms * 0.004), -1.3, 1.3);
+      }
+    });
+
+    $("c").addEventListener("mousedown", e => {
+      if (!playing || ui || paused || busy) return;
+      if (!isTouchDevice && document.pointerLockElement !== $("c")) {
+        lock();
+      }
+      if (e.button === 0) shoot();
+    });
+
+    const cv = $("c");
+    const tl = (e, fn) => {
+      e.preventDefault();
+      for (const x of e.changedTouches) fn(x);
+    };
+
+    cv.addEventListener("touchstart", e => tl(e, x => {
+      if (lt === null) {
+        lt = x.identifier;
+        lx = x.clientX;
+        ly = x.clientY;
+      }
+    }), { passive: false });
+
+    cv.addEventListener("touchmove", e => tl(e, x => {
+      if (x.identifier === lt && !ui && !paused) {
+        const k = 0.0025 + cfg.ts * 0.006;
+        yaw -= (x.clientX - lx) * k;
+        pitch = cl(pitch - (x.clientY - ly) * k, -1.3, 1.3);
+        lx = x.clientX;
+        ly = x.clientY;
+      }
+    }), { passive: false });
+
+    const lend = e => tl(e, x => {
+      if (x.identifier === lt) lt = null;
+    });
+    cv.addEventListener("touchend", lend, { passive: false });
+    cv.addEventListener("touchcancel", lend, { passive: false });
+
+    const J = $("joy");
+    const jm = x => {
+      const r = J.getBoundingClientRect();
+      const dx = x.clientX - (r.left + r.width / 2);
+      const dy = x.clientY - (r.top + r.height / 2);
+      const d = Math.hypot(dx, dy);
+      const maxR = r.width * 0.38;
+      const k = d > maxR ? maxR / d : 1;
+      joy.x = (dx * k) / maxR;
+      joy.y = (dy * k) / maxR;
+      $("jk").style.transform = `translate(${dx * k}px,${dy * k}px)`;
+    };
+
+    J.addEventListener("touchstart", e => tl(e, x => {
+      jt = x.identifier;
+      jm(x);
+    }), { passive: false });
+
+    J.addEventListener("touchmove", e => tl(e, x => {
+      if (x.identifier === jt) jm(x);
+    }), { passive: false });
+
+    const jend = e => tl(e, x => {
+      if (x.identifier === jt) {
+        jt = null;
+        joy.x = joy.y = 0;
+        $("jk").style.transform = "";
+      }
+    });
+    J.addEventListener("touchend", jend, { passive: false });
+    J.addEventListener("touchcancel", jend, { passive: false });
+
+    $("bU").addEventListener("pointerdown", e => {
+      e.preventDefault();
+      if (cur && !ui && !paused) cur.fn();
+    });
+    $("bF").addEventListener("pointerdown", e => {
+      e.preventDefault();
+      FLon = !FLon;
+      snd.pick();
+    });
+    $("bShoot").addEventListener("pointerdown", e => {
+      e.preventDefault();
+      shoot();
+    });
+
+    const hold = (id, set) => {
+      const el = $(id);
+      el.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        set(true);
+        el.classList.add("on");
+      });
+      ["pointerup", "pointercancel"].forEach(ev => {
+        el.addEventListener(ev, () => {
+          set(false);
+          el.classList.remove("on");
+        });
+      });
+    };
+    hold("bR", v => runT = v);
+    hold("bC", v => crT = v);
+
+    $("pa").onclick = () => {
+      if (playing && !ui) setPausedState(!paused);
+    };
+
+    /* ============ MAIN SIMULATION LOOP ============ */
+    const RC = new THREE.Raycaster();
+    RC.far = 3.4;
+
+    function update(dt) {
+      S.t += dt;
+      if (shootCd > 0) shootCd -= dt;
+
+      if (ui === "train") {
+        const spd = 55 + trStage * 22;
+        trPos += trDir * spd * dt;
+        if (trPos >= 96) { trPos = 96; trDir = -1; }
+        if (trPos <= 0) { trPos = 0; trDir = 1; }
+        $("train-cursor").style.left = trPos + "%";
+        return;
+      }
+
+      if (ui || paused || busy) return;
+
+      // Subtle lamp flicker
+      for (let i = 0; i < LT.length; i++) {
+        const l = LT[i];
+        l.p.intensity = l.baseInt * (0.92 + 0.08 * Math.sin(S.t * 7.5 + i * 2.1));
+      }
+
+      let fw = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0) - joy.y;
+      let st = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0) + joy.x;
+      const ln = Math.hypot(fw, st);
+      if (ln > 1) { fw /= ln; st /= ln; }
+
+      const crh = K.KeyC || K.ControlLeft || crT;
+      const run = (K.ShiftLeft || runT) && !crh;
+      const sp = crh ? 1.6 : run ? 4.6 : 2.85;
+      const s = Math.sin(yaw);
+      const c = Math.cos(yaw);
+      const dx = (-s * fw + c * st) * sp * dt;
+      const dz = (-c * fw - s * st) * sp * dt;
+
+      const curFl = P.y < -1.5 ? 0 : 1;
+      if (!hitWall(P.x + dx, P.z, curFl)) P.x += dx;
+      if (!hitWall(P.x, P.z + dz, curFl)) P.z += dz;
+
+      // Stairwell transition between Floor 1 (y = 0) and Basement (y = -4.2)
+      if (P.x > 7.2 && P.x < 10.8 && P.z > -1.5 && P.z < 6.5) {
+        const prog = cl((P.z - (-1.5)) / 8.0, 0, 1);
+        P.y = -4.2 * prog;
+      } else if (P.z <= -1.5 && P.y > -2.1) {
+        P.y = 0;
+      } else if (P.z >= 6.5 && P.y <= -2.1) {
+        P.y = -4.2;
+      }
+
+      if (ln > 0.1) {
+        stepT -= dt * sp;
+        if (stepT < 0) {
+          stepT = 1.4;
+          snd.step();
+        }
+      }
+
+      const eyeH = (crh ? 0.95 : 1.65) + P.y;
+      cam.position.set(P.x, eyeH, P.z);
+      cam.rotation.set(pitch, yaw, 0);
+
+      if (FLon && S.bat > 0) {
+        S.bat = Math.max(0, S.bat - dt * 0.11);
+        FL.visible = true;
+      } else {
+        FL.visible = false;
+      }
+      $("bat-bar").style.width = S.bat + "%";
+
+      for (const id in DR) {
+        const d = DR[id];
+        const tg = S.open[id] ? d.ang : 0;
+        d.a += (tg - d.a) * Math.min(1, dt * 5);
+        d.p.rotation.y = d.a;
+        d.col.on = !S.open[id];
+      }
+
+      trainStations.forEach(ts => {
+        ts.orb.rotation.y += dt * 2.1;
+        ts.orb.visible = (S.stage === ts.stageId);
+      });
+      if (keyMesh.visible) keyMesh.rotation.y += dt * 3;
+
+      if (Boss.active) {
+        if (Boss.hitFlash > 0) {
+          Boss.hitFlash -= dt;
+          bossSpriteMat.color.setHex(0xff5252);
+        } else {
+          bossSpriteMat.color.setHex(0xffffff);
+        }
+
+        if (Boss.canTire) {
+          if (!Boss.tired) {
+            Boss.stamina -= dt * 15;
+            if (Boss.stamina <= 0) {
+              Boss.stamina = 0;
+              Boss.tired = true;
+              updateHUD();
+            }
+          } else {
+            Boss.stamina += dt * 22;
+            if (Boss.stamina >= 100) {
+              Boss.stamina = 100;
+              Boss.tired = false;
+              updateHUD();
+            }
+          }
+        }
+
+        const curSpd = Boss.tired ? Boss.speed * 0.34 : Boss.speed;
+        if (P.y > -1.5) {
+          const bx = P.x - EN.position.x;
+          const bz = P.z - EN.position.z;
+          const dist = Math.hypot(bx, bz) || 1;
+          bossSprite.position.y = 1.15 + Math.sin(S.t * (Boss.tired ? 3 : 9)) * 0.05;
+
+          if (dist > 1.15) {
+            const mx = (bx / dist) * curSpd * dt;
+            const mz = (bz / dist) * curSpd * dt;
+            if (!hitWall(EN.position.x + mx, EN.position.z, 1)) EN.position.x += mx;
+            if (!hitWall(EN.position.x, EN.position.z + mz, 1)) EN.position.z += mz;
+          } else {
+            Boss.atkCd -= dt;
+            if (Boss.atkCd <= 0) {
+              Boss.atkCd = 1.1;
+              S.hp = Math.max(0, S.hp - 22);
+              snd.hurt();
+              $("vg").classList.add("hurt");
+              setTimeout(() => $("vg").classList.remove("hurt"), 250);
+              updateHUD();
+              if (S.hp <= 0) loseGame();
+            }
+          }
+        }
+      }
+
+      updateCompass();
+
+      RC.setFromCamera({ x: 0, y: 0 }, cam);
+      const hitObj = RC.intersectObjects(IA, false).find(o => o.object.visible);
+      cur = hitObj ? hitObj.object.userData.a : null;
+      $("pr").textContent = cur ? cur.l() : "";
+    }
+
+    function winGame() {
+      busy = 1;
+      playing = false;
+      paused = false;
+      $("hud").style.display = "none";
+      if (document.pointerLockElement) {
+        try { document.exitPointerLock(); } catch (e) {}
+      }
+      $("eh").style.color = "#48dbfb";
+      $("eh").textContent = "GʻALABA! METRO BILAN QOCHDINGIZ!";
+      $("et").textContent = "Siz Granny, Grandfather va tezkor Son ni yengib, kalitni qoʻlga kiritdingiz va padvaldagi metro poyezdi bilan dahshatli uydan qochib qutuldingiz!";
+      $("end").classList.add("on");
+    }
+
+    function loseGame() {
+      busy = 1;
+      playing = false;
+      paused = false;
+      $("hud").style.display = "none";
+      if (document.pointerLockElement) {
+        try { document.exitPointerLock(); } catch (e) {}
+      }
+      $("eh").style.color = "#ff3b3b";
+      $("eh").textContent = "SIZNI TUTIB OLISHDI!";
+      $("et").textContent = `${Boss.name} sizga yetib oldi. Mashqlarni tezroq bajaring va qurol bilan oʻzingizni himoya qiling!`;
+      $("end").classList.add("on");
+    }
+
+    function startGame() {
+      snd.init();
+      if (AC && AC.state === "suspended") {
+        AC.resume().catch(() => {});
+      }
+      S = fresh();
+      ["menu", "end", "pause", "set", "help", "train"].forEach(id => $(id).classList.remove("on"));
+      $("hud").style.display = "block";
+      playing = true;
+      paused = false;
+      busy = 0;
+      ui = "";
+      P.x = -6;
+      P.y = 0;
+      P.z = 5;
+      yaw = 0;
+      pitch = 0;
+      keyMesh.visible = false;
+      for (const id in DR) S.open[id] = false;
+      $("fd").style.opacity = 0;
+      spawnStageBoss(1);
+      lock();
+    }
+
+    $("bN").onclick = startGame;
+    $("bS").onclick = () => $("set").classList.add("on");
+    $("bHelp").onclick = () => $("help").classList.add("on");
+    document.querySelectorAll(".bk").forEach(b => {
+      b.onclick = () => ["set", "help"].forEach(id => $(id).classList.remove("on"));
+    });
+    $("bRs").onclick = () => setPausedState(false);
+    $("bMm").onclick = () => {
+      playing = false;
+      paused = false;
+      $("hud").style.display = "none";
+      $("pause").classList.remove("on");
+      $("menu").classList.add("on");
+      if (document.pointerLockElement) {
+        try { document.exitPointerLock(); } catch (e) {}
+      }
+    };
+    $("em").onclick = () => {
+      $("end").classList.remove("on");
+      $("menu").classList.add("on");
+    };
+
+    // Register all portrait canvases (Menu cards + HUD Boss Avatar)
+    registerPortraitCanvas($("prev1"), 1);
+    registerPortraitCanvas($("prev2"), 2);
+    registerPortraitCanvas($("prev3"), 3);
+    registerPortraitCanvas($("boss-avatar"), 1);
+
+    buildWorld();
+    quality();
+
+    window.onload = function () {
+      let last = performance.now();
+      (function loop(now) {
+        requestAnimationFrame(loop);
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        if (playing) update(dt);
+        renderer.render(scene, cam);
+      })(last);
+    };
+  </script>
+</body>
+</html>
